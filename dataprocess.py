@@ -1,4 +1,5 @@
 # data analysis and wrangling
+import ipdb
 import pandas as pd
 import numpy as np
 import random as rnd
@@ -169,7 +170,6 @@ for dataset in combine:
 for dataset in combine:
     dataset['Age*Class'] = dataset.Age * dataset.Pclass
 
-
 print('_'*40)
 
 #Let us drop Parch, SibSp, and FamilySize features in favor of IsAlone.
@@ -207,3 +207,16 @@ combine = [train_df, test_df]
 
 #finished feature processing
 print(train_df.head())
+
+print('_'*40)
+
+#convert to numpy array
+
+result = train_df.values
+print(result)
+
+#convert to excel
+train_df.to_excel('foo.xlsx', sheet_name='Sheet1')
+
+#breakpoint into ipython
+#ipdb.set_trace()
