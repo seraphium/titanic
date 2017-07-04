@@ -52,15 +52,17 @@ x = tf.placeholder(tf.float32, [None, features])
 
 w = tf.Variable(tf.zeros([features, 1]))
 
+factor = tf.constant(1.0)
 #output
 z = tf.matmul(x, w) + b
-y = tf.nn.sigmoid(z)
+y = tf.nn.sigmoid(factor * z)
 
 y_ = tf.placeholder(tf.float32, [None, 1])
 
-lbda = tf.constant(0.000)
+lbda = tf.constant(0.00001)
 
-loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=y_, logits=z) + lbda * tf.nn.l2_loss(w))
+#cross entropy
+loss = -tf.reduce_mean(y_ * tf.log(y) + (1 - y_) * tf.log(1 - y)) + lbda * tf.nn.l2_loss(w)
 
 train_step = tf.train.GradientDescentOptimizer(0.5).minimize(loss)
 
