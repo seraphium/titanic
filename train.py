@@ -2,7 +2,8 @@
 import seaborn as sns
 import matplotlib.pyplot as plt
 #%matplotlib inline
-
+import pandas as pd
+import numpy as np
 # machine learning
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC, LinearSVC
@@ -37,6 +38,14 @@ acc_log = round(log_reg.score(x_train, y_train) * 100, 2)
 
 print('Logistic regression accuracy:', acc_log)
 
+# feature coefficients
+coeff_df = pd.DataFrame(train_df.columns.delete(0))
+coeff_df.columns = ['Feature']
+coeff_df["Correlation"] = pd.Series(log_reg.coef_[0])
+
+print(coeff_df.sort_values(by='Correlation', ascending=False))
+
+
 svc = SVC()
 svc.fit(x_train, y_train)
 y_predict = svc.predict(x_test)
@@ -58,7 +67,6 @@ factor = tf.constant(1.0)
 #output
 z = tf.matmul(x, w) + b
 y = tf.nn.sigmoid(factor * z)
-
 y_ = tf.placeholder(tf.float32, [None, 1])
 
 lbda = tf.constant(0.00001)
@@ -84,3 +92,16 @@ with tf.Session() as sess:
             print('loss:', loss_value)
             acc_value = accuracy.eval(feed_dict={x: x_train, y_: y_train})
             print('accuracy:', acc_value)
+
+    predict_value = list(map(lambda value : 1 if value > 0.5 else 0, list(y.eval(feed_dict={x: x_test}))))
+
+
+#generate submission result
+submission = pd.DataFrame({
+        "PassengerId": test_df["PassengerId"],
+        "Survived": predict_value
+    })
+
+print(submission)
+
+submission.to_csv("submission.csv", index=False)

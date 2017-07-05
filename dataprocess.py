@@ -211,12 +211,15 @@ def loaddata():
 
     print('_'*40)
 
+
+
     #feature normization
 
     for index in train_df.columns[1:]:
         train_df[index] = (train_df[index] - train_df[index].mean()) / train_df[index].max()
 
-    for index in test_df.columns:
+    for index in test_df.columns[1:]:
         test_df[index] = (test_df[index] - test_df[index].mean()) / test_df[index].max()
+
 
     return [train_df, test_df]
