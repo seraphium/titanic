@@ -161,13 +161,13 @@ metric = {metric_name:
         eval_metrics.get_metric(metric_name),
         prediction_key=eval_metrics.get_prediction_key(metric_name))}
 
-binary_value = estimator.predict(x=x_test.values, batch_size=1)
+binary_value = estimator.predict(x=x_test.values, batch_size=1, as_iterable=False)
 
 
 #generate submission result
 submission = pd.DataFrame({
        "PassengerId": test_df["PassengerId"].astype(int),
-       "Survived": binary_value
+       "Survived": binary_value['classes']
    })
 
 print(submission)
