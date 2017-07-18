@@ -6,7 +6,7 @@ import random as rnd
 
 
 
-def loaddata():
+def loaddata(normalization=False):
     #load data
     train_df = pd.read_csv('./train.csv')
     test_df = pd.read_csv('./test.csv')
@@ -211,15 +211,11 @@ def loaddata():
 
     print('_'*40)
 
-
-
     #feature normization
-
-    for index in train_df.columns[1:]:
-        train_df[index] = (train_df[index] - train_df[index].mean()) / train_df[index].max()
-
-    for index in test_df.columns[1:]:
-        test_df[index] = (test_df[index] - test_df[index].mean()) / test_df[index].max()
-
+    if normalization:
+        for index in train_df.columns[1:]:
+            train_df[index] = (train_df[index] - train_df[index].mean()) / train_df[index].max()
+        for index in test_df.columns[1:]:
+            test_df[index] = (test_df[index] - test_df[index].mean()) / test_df[index].max()
 
     return [train_df, test_df]
