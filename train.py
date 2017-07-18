@@ -52,54 +52,80 @@ y_predict = svc.predict(x_test)
 acc_svc = round(svc.score(x_train, y_train)*100, 2)
 print('SVM regression accuracy:', acc_svc)
 
+tf.logging.set_verbosity(tf.logging.INFO)
 
-#tensorflow
 
-y_train = y_train.values.reshape(-1, 1)
-x_train = x_train.values
+#low level tensorflow
+#
+# y_train = y_train.values.reshape(-1, 1)
+# x_train = x_train.values
+#
+# b = tf.Variable(tf.zeros([1, 1]))
+# x = tf.placeholder(tf.float32, [None, features])
+#
+# w = tf.Variable(tf.zeros([features, 1]))
+#
+# factor = tf.constant(1.0)
+# #output
+# z = tf.matmul(x, w) + b
+# y = tf.nn.sigmoid(factor * z)
+# y_ = tf.placeholder(tf.float32, [None, 1])
+#
+# lbda = tf.constant(0.00001)
+#
+# #cross entropy
+# loss = -tf.reduce_mean(y_ * tf.log(y) + (1 - y_) * tf.log(1 - y)) + lbda * tf.nn.l2_loss(w)
+#
+# train_step = tf.train.GradientDescentOptimizer(0.5).minimize(loss)
+#
+# correct_prediction = tf.less(tf.abs(y - y_), 0.5)
+#
+# accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+#
+# with tf.Session() as sess:
+#     init = tf.global_variables_initializer()
+#     sess.run(init)
+#
+#     epoch = 10000
+#     for index in range(epoch):
+#         _ = sess.run([train_step], feed_dict={x: x_train, y_: y_train})
+#         if index % 100 == 0:
+#             loss_value = sess.run([loss], feed_dict={x: x_train, y_: y_train})
+#             print('loss:', loss_value)
+#             acc_value = accuracy.eval(feed_dict={x: x_train, y_: y_train})
+#             print('accuracy:', acc_value)
+#
+#     predict_value = list(map(lambda value : 1 if value > 0.5 else 0, list(y.eval(feed_dict={x: x_test}))))
+#
+#
 
-b = tf.Variable(tf.zeros([1, 1]))
-x = tf.placeholder(tf.float32, [None, features])
 
-w = tf.Variable(tf.zeros([features, 1]))
+COLUMNS = train_df.columns
+FEATURES = COLUMNS[1:]
+LABEL = COLUMNS[0]
+test_df[LABEL] = 0
 
-factor = tf.constant(1.0)
-#output
-z = tf.matmul(x, w) + b
-y = tf.nn.sigmoid(factor * z)
-y_ = tf.placeholder(tf.float32, [None, 1])
+feature_cols = [tf.contrib.layers.real_valued_column(k) for k in FEATURES]
 
-lbda = tf.constant(0.00001)
+regressor = tf.contrib.learn.DNNRegressor(feature_columns=feature_cols, hidden_units=[30, 30],
+                                          model_dir="./titanic_model")
 
-#cross entropy
-loss = -tf.reduce_mean(y_ * tf.log(y) + (1 - y_) * tf.log(1 - y)) + lbda * tf.nn.l2_loss(w)
+def input_fn(data_set):
+    feature_cols = {k: tf.constant(data_set[k].values) for k in FEATURES}
+    labels = tf.constant(data_set[LABEL].values)
 
-train_step = tf.train.GradientDescentOptimizer(0.5).minimize(loss)
+    return feature_cols, labels
 
-correct_prediction = tf.less(tf.abs(y - y_), 0.5)
+regressor.fit(input_fn=lambda: input_fn(train_df), steps=5000)
 
-accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+predict_value = regressor.predict(input_fn=lambda: input_fn(test_df))
 
-with tf.Session() as sess:
-    init = tf.global_variables_initializer()
-    sess.run(init)
-
-    epoch = 10000
-    for index in range(epoch):
-        _ = sess.run([train_step], feed_dict={x: x_train, y_: y_train})
-        if index % 100 == 0:
-            loss_value = sess.run([loss], feed_dict={x: x_train, y_: y_train})
-            print('loss:', loss_value)
-            acc_value = accuracy.eval(feed_dict={x: x_train, y_: y_train})
-            print('accuracy:', acc_value)
-
-    predict_value = list(map(lambda value : 1 if value > 0.5 else 0, list(y.eval(feed_dict={x: x_test}))))
-
+binary_value = list(map(lambda value : 1 if value > 0.5 else 0, list(predict_value)))
 
 #generate submission result
 submission = pd.DataFrame({
         "PassengerId": test_df["PassengerId"],
-        "Survived": predict_value
+        "Survived": binary_value
     })
 
 print(submission)

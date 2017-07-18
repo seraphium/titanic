@@ -156,7 +156,7 @@ def loaddata():
         dataset.loc[dataset['FamilySize'] == 1, 'IsAlone'] = 1
 
     for dataset in combine:
-        dataset['Age*Class'] = dataset.Age * dataset.Pclass
+        dataset['AgeClass'] = dataset.Age * dataset.Pclass
 
     print('_'*40)
 
