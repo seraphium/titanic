@@ -15,6 +15,7 @@ from sklearn.linear_model import SGDClassifier
 from sklearn.tree import DecisionTreeClassifier
 
 import tensorflow as tf
+import tensorflow.contrib.slim as slim
 import numpy as np
 
 #import for Random forest
@@ -40,7 +41,7 @@ train_df = train_df.astype(np.float32)
 test_df = test_df.astype(np.float32)
 x_train = train_df.drop('Survived', axis=1)
 train_df['Unsurvived'] = 1 - train_df['Survived']
-y_train = train_df.loc[:, ['Unsurvived', 'Survived']]
+y_train = train_df.loc[:, ['Survived']]
 x_test = test_df.drop('PassengerId', axis=1)
 
 features = int(len(x_train.columns))
@@ -122,23 +123,32 @@ FEATURES = COLUMNS[1:]
 LABEL = COLUMNS[0]
 test_df[LABEL] = 0
 
+'''
+High level tf approach
+'''
+'''
 feature_cols = [tf.contrib.layers.real_valued_column(k) for k in FEATURES]
-#
-# regressor = tf.contrib.learn.DNNRegressor(feature_columns=feature_cols, hidden_units=[30, 30],
-#                                           model_dir="./titanic_model")
-#
-# def input_fn(data_set):
-#     feature_cols = {k: tf.constant(data_set[k].values) for k in FEATURES}
-#     labels = tf.constant(data_set[LABEL].values)
-#
-#     return feature_cols, labels
-#
-# regressor.fit(input_fn=lambda: input_fn(train_df), steps=5000)
-#
-# predict_value = regressor.predict(input_fn=lambda: input_fn(test_df))
-#
-# binary_value = list(map(lambda value : 1 if value > 0.5 else 0, list(predict_value)))
+regressor = tf.contrib.learn.DNNRegressor(feature_columns=feature_cols, hidden_units=[30, 30],
+                                          model_dir="./titanic_model")
 
+def input_fn(data_set):
+    feature_cols = {k: tf.constant(data_set[k].values) for k in FEATURES}
+    labels = tf.constant(data_set[LABEL].values)
+
+    return feature_cols, labels
+
+regressor.fit(input_fn=lambda: input_fn(train_df), steps=5000)
+
+predict_value = regressor.predict(input_fn=lambda: input_fn(test_df))
+
+binary_value = list(map(lambda value : 1 if value > 0.5 else 0, list(predict_value)))
+'''
+
+
+'''
+random forest approach
+'''
+'''
 params = tensor_forest.ForestHParams(
     num_classes=2, num_features=len(FEATURES),
     num_trees=100, max_nodes=1000)
@@ -162,14 +172,42 @@ metric = {metric_name:
         prediction_key=eval_metrics.get_prediction_key(metric_name))}
 
 binary_value = estimator.predict(x=x_test.values, batch_size=1, as_iterable=False)
+'''
+
+''''
+TF-Slim approach
+'''
+def getNetwork(input):
+    with slim.arg_scope([slim.fully_connected],
+                        activation_fn=tf.nn.relu,
+                        weights_initializer=tf.truncated_normal_initializer(stddev=0.01),
+                        weights_regularizer=slim.l2_regularizer(0.0001)):
+        net=slim.fully_connected(input, 30,scope="fc1")
+        net = slim.dropout(net, 0.5, scope='dropout1')
+        net = slim.fully_connected(net, 30, scope="fc2")
+        net = slim.dropout(net, 0.5, scope='dropout2')
+        net = slim.fully_connected(net, 1, scope="output")
+        return net
+
+y_train = y_train.values.reshape(-1, 1)
+x_train = x_train.values
+predictions = getNetwork(x_train)
+loss = tf.losses.mean_squared_error(predictions, y_train)
+tf.summary.scalar('loss/total_loss', loss)
+
+optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
+train_op = slim.learning.create_train_op(loss, optimizer)
+logdir = "/tmp/titanic_train"
+
+slim.learning.train(train_op, logdir, number_of_steps=10000,save_summaries_secs=10, save_interval_secs=30)
 
 
 #generate submission result
-submission = pd.DataFrame({
-       "PassengerId": test_df["PassengerId"].astype(int),
-       "Survived": binary_value['classes']
-   })
-
-print(submission)
-
-submission.to_csv("submission.csv", index=False)
+# submission = pd.DataFrame({
+#        "PassengerId": test_df["PassengerId"].astype(int),
+#        "Survived": binary_value['classes']
+#    })
+#
+# print(submission)
+#
+# submission.to_csv("submission.csv", index=False)
