@@ -180,19 +180,6 @@ TF-Slim approach
 ckpt_path = "/tmp/titanic_train/"
 
 with tf.Graph().as_default():
-      #  predictions,  _ = get_network(x)
-      #   inputs = tf.placeholder(tf.float32, shape=(None, 1))
-      #   outputs = tf.placeholder(tf.float32, shape=(None, 2))
-      #   predictions, end_points = get_network(inputs)
-      #   print("Layers")
-      #   for k, v in end_points.items():
-      #       print('name = {}, shape = {}'.format(v.name, v.get_shape()))
-      #
-      #   # Print name and shape of parameter nodes  (values not yet initialized)
-      #   print("\n")
-      #   print("Parameters")
-      #   for v in slim.get_model_variables():
-      #       print('name = {}, shape = {}'.format(v.name, v.get_shape()))
 
     inputs, targets = convert_data_to_tensors(x_train, y_train)
     predictions, nodes = get_network(inputs, is_training=True)
@@ -200,6 +187,13 @@ with tf.Graph().as_default():
     mean_squared_error_loss = tf.losses.mean_squared_error(predictions, targets)
 
     tf.summary.scalar('loss/mean_squared_error_loss', mean_squared_error_loss)
+    with tf.name_scope('accuracy'):
+        with tf.name_scope('correct_prediction'):
+            correct_prediction = tf.equal(tf.argmax(predictions, 1), tf.argmax(targets , 1))
+        with tf.name_scope('accuracy'):
+            accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+    tf.summary.scalar('accuracy', accuracy)
+
 
     optimizer = tf.train.AdamOptimizer(learning_rate=0.03)
     train_op = slim.learning.create_train_op(mean_squared_error_loss, optimizer)
