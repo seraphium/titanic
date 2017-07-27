@@ -17,6 +17,7 @@ from sklearn.tree import DecisionTreeClassifier
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import numpy as np
+from graph import convert_data_to_tensors, get_network
 
 #import for Random forest
 
@@ -35,14 +36,12 @@ import tempfile
 
 from dataprocess import loaddata
 
-train_df, test_df = loaddata()
+train_df, _ = loaddata(normalization=True)
 
 train_df = train_df.astype(np.float32)
-test_df = test_df.astype(np.float32)
 x_train = train_df.drop('Survived', axis=1)
 train_df['Unsurvived'] = 1 - train_df['Survived']
-y_train = train_df.loc[:, ['Survived']]
-x_test = test_df.drop('PassengerId', axis=1)
+y_train = train_df.loc[:, ['Unsurvived', 'Survived']]
 
 features = int(len(x_train.columns))
 print('features:', features)
@@ -121,7 +120,6 @@ print('features:', features)
 COLUMNS = train_df.columns
 FEATURES = COLUMNS[1:]
 LABEL = COLUMNS[0]
-test_df[LABEL] = 0
 
 '''
 High level tf approach
@@ -177,37 +175,39 @@ binary_value = estimator.predict(x=x_test.values, batch_size=1, as_iterable=Fals
 ''''
 TF-Slim approach
 '''
-def getNetwork(input):
-    with slim.arg_scope([slim.fully_connected],
-                        activation_fn=tf.nn.relu,
-                        weights_initializer=tf.truncated_normal_initializer(stddev=0.01),
-                        weights_regularizer=slim.l2_regularizer(0.0001)):
-        net=slim.fully_connected(input, 30,scope="fc1")
-        net = slim.dropout(net, 0.5, scope='dropout1')
-        net = slim.fully_connected(net, 30, scope="fc2")
-        net = slim.dropout(net, 0.5, scope='dropout2')
-        net = slim.fully_connected(net, 1, scope="output")
-        return net
-
-y_train = y_train.values.reshape(-1, 1)
-x_train = x_train.values
-predictions = getNetwork(x_train)
-loss = tf.losses.mean_squared_error(predictions, y_train)
-tf.summary.scalar('loss/total_loss', loss)
-
-optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
-train_op = slim.learning.create_train_op(loss, optimizer)
-logdir = "/tmp/titanic_train"
-
-slim.learning.train(train_op, logdir, number_of_steps=10000,save_summaries_secs=10, save_interval_secs=30)
 
 
-#generate submission result
-# submission = pd.DataFrame({
-#        "PassengerId": test_df["PassengerId"].astype(int),
-#        "Survived": binary_value['classes']
-#    })
-#
-# print(submission)
-#
-# submission.to_csv("submission.csv", index=False)
+ckpt_path = "/tmp/titanic_train/"
+
+with tf.Graph().as_default():
+      #  predictions,  _ = get_network(x)
+      #   inputs = tf.placeholder(tf.float32, shape=(None, 1))
+      #   outputs = tf.placeholder(tf.float32, shape=(None, 2))
+      #   predictions, end_points = get_network(inputs)
+      #   print("Layers")
+      #   for k, v in end_points.items():
+      #       print('name = {}, shape = {}'.format(v.name, v.get_shape()))
+      #
+      #   # Print name and shape of parameter nodes  (values not yet initialized)
+      #   print("\n")
+      #   print("Parameters")
+      #   for v in slim.get_model_variables():
+      #       print('name = {}, shape = {}'.format(v.name, v.get_shape()))
+
+    inputs, targets = convert_data_to_tensors(x_train, y_train)
+    predictions, nodes = get_network(inputs, is_training=True)
+
+    mean_squared_error_loss = tf.losses.mean_squared_error(predictions, targets)
+
+    tf.summary.scalar('loss/mean_squared_error_loss', mean_squared_error_loss)
+
+    optimizer = tf.train.AdamOptimizer(learning_rate=0.03)
+    train_op = slim.learning.create_train_op(mean_squared_error_loss, optimizer)
+    logdir = ckpt_path
+
+    final_loss = slim.learning.train(train_op, logdir,
+                                     number_of_steps=100000,
+                                     save_summaries_secs=10,
+                                     log_every_n_steps=10000)
+    print("Finished training.Final loss:", final_loss)
+
